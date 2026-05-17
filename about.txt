@@ -1,0 +1,8 @@
+This project is an expense tracker.
+
+
+version V0.1:
+
+1. get the amount from the user.
+2. add the amount to the expense.
+3. Show the total expense.
