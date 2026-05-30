@@ -27,17 +27,16 @@ export default function Home() {
     setExpense(total);
   }
 
-  function addExpense(e) {
+  function addExpense(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    let newTotal = Number(totalexpense) + Number(amount);
-    setExpense(Number(newTotal));
-    let newExpense: Expense = {
+    const newExpense: Expense = {
       id: Date.now(),
       amt: amount,
       dsc: description,
     };
     const updated = [...expenses, newExpense];
     setExpenses(updated);
+    calculateTotal(updated);
     localStorage.setItem("expenses", JSON.stringify(updated));
     setAmount(0);
     setDescription("");
