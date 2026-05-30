@@ -157,18 +157,20 @@ export default function Home() {
           <p className="text-3xl font-bold text-blue-600">₹{totalexpense}</p>
         </div>
 
-        <ul>
+        <h3 className="text-sm font-semibold text-gray-400 uppercase mb-2">
+          Categories
+        </h3>
+        <ul className="flex flex-col gap-2 mb-6">
           {catogory_amt.map((c, index) => (
             <li
               key={index}
-              className="text-black flex flex-row justify-between"
+              className="flex justify-between items-center bg-gray-50 rounded-lg px-4 py-3"
             >
-              <span>Category: {c.name}</span>
-              <span> Amount: {c.amt}</span>
+              <span className="text-gray-700">{c.name}</span>
+              <span className="font-semibold text-gray-800">₹{c.amt}</span>
               <button
-                onClick={() => {
-                  resetCatogortValues(index);
-                }}
+                onClick={() => resetCatogortValues(index)}
+                className="text-black rounded-lg px-2 py-1 bg-gray-400 hover:bg-gray-600 transition-colors"
               >
                 Reset
               </button>
