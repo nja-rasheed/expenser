@@ -4,21 +4,43 @@ import { useState, useEffect } from "react";
 type Expense = {
   id: number;
   amt: number;
+  catogory: number;
   dsc: string;
 };
 
+type Catogory = {
+  name: string;
+  amt: number;
+};
+
+const catogory: Catogory[] = [
+  { name: "Food", amt: 0 },
+  { name: "Transportation", amt: 0 },
+  { name: "Education", amt: 0 },
+  { name: "Leisure", amt: 0 },
+  { name: "Personal care", amt: 0 },
+  { name: "Work", amt: 0 },
+  { name: "Utilities", amt: 0 },
+];
 export default function Home() {
   const [amount, setAmount] = useState(0);
+  const [cIndex, setCIndex] = useState(0);
   const [description, setDescription] = useState("");
   const [totalexpense, setExpense] = useState(0);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [catogory_amt, setCatogoryAmt] = useState<Catogory[]>(catogory);
 
   useEffect(() => {
     const stored_expenses = localStorage.getItem("expenses");
+    const stored_catogory_amt = localStorage.getItem("catogory_amt");
     if (stored_expenses) {
       const parsed = JSON.parse(stored_expenses);
       setExpenses(parsed);
       calculateTotal(parsed);
+    }
+    if (stored_catogory_amt) {
+      const parsed = JSON.parse(stored_catogory_amt);
+      setCatogoryAmt(parsed);
     }
   }, []);
 
@@ -32,8 +54,14 @@ export default function Home() {
     const newExpense: Expense = {
       id: Date.now(),
       amt: amount,
+      catogory: cIndex,
       dsc: description,
     };
+    const updatedCats = catogory_amt.map((c, i) =>
+      i === cIndex ? { ...c, amt: c.amt + amount } : c
+    );
+    setCatogoryAmt(updatedCats);
+    localStorage.setItem("catogory_amt", JSON.stringify(updatedCats));
     const updated = [...expenses, newExpense];
     setExpenses(updated);
     calculateTotal(updated);
@@ -44,6 +72,12 @@ export default function Home() {
 
   function deleteExpense(del_id: number) {
     const updated = expenses.filter((exp) => exp.id !== del_id);
+    const target = expenses.find((exp) => exp.id === del_id)!;
+    const updatedCats = catogory_amt.map((c, i) =>
+      i === target.catogory ? { ...c, amt: c.amt - target.amt } : c
+    );
+    setCatogoryAmt(updatedCats);
+    localStorage.setItem("catogory_amt", JSON.stringify(updatedCats));
     setExpenses(updated);
     calculateTotal(updated);
     localStorage.setItem("expenses", JSON.stringify(updated));
@@ -55,8 +89,22 @@ export default function Home() {
       return;
     }
     localStorage.setItem("expenses", JSON.stringify([]));
+    localStorage.setItem("catogory_amt", JSON.stringify(catogory));
     setExpenses([]);
+    setCatogoryAmt(catogory);
     setExpense(0);
+  }
+
+  function resetCatogortValues(index: number) {
+    const updatedCats = catogory_amt.map((c, i) =>
+      i === index ? { ...c, amt: 0 } : c
+    );
+    setCatogoryAmt(updatedCats);
+    localStorage.setItem("catogory_amt", JSON.stringify(updatedCats));
+    const updated = expenses.filter((exp) => exp.catogory !== index);
+    calculateTotal(updated);
+    setExpenses(updated);
+    localStorage.setItem("expenses", JSON.stringify(updated));
   }
 
   return (
@@ -75,6 +123,19 @@ export default function Home() {
             className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-black"
             required
           />
+          <label className="text-black">Select a Catogory</label>
+          <select
+            name="category"
+            id="category"
+            className="text-black bg-amber-200 rounded-lg"
+            onChange={(e) => setCIndex(Number(e.target.value))}
+          >
+            {catogory_amt.map((c, index) => (
+              <option value={index} key={index}>
+                {c.name}
+              </option>
+            ))}
+          </select>
           <input
             type="text"
             placeholder="Enter description..."
@@ -96,6 +157,25 @@ export default function Home() {
           <p className="text-3xl font-bold text-blue-600">₹{totalexpense}</p>
         </div>
 
+        <ul>
+          {catogory_amt.map((c, index) => (
+            <li
+              key={index}
+              className="text-black flex flex-row justify-between"
+            >
+              <span>Category: {c.name}</span>
+              <span> Amount: {c.amt}</span>
+              <button
+                onClick={() => {
+                  resetCatogortValues(index);
+                }}
+              >
+                Reset
+              </button>
+            </li>
+          ))}
+        </ul>
+
         <h3 className="text-sm font-semibold text-gray-400 uppercase mb-2">
           Expenses
         </h3>
@@ -110,6 +190,7 @@ export default function Home() {
             No expenses yet.
           </p>
         )}
+
         <ul className="flex flex-col gap-2">
           {expenses.map((expense_ind, index) => (
             <li
@@ -117,6 +198,9 @@ export default function Home() {
               className="flex justify-between items-center bg-gray-50 rounded-lg px-4 py-3"
             >
               <span className="text-gray-700">{expense_ind.dsc}</span>
+              <span className="text-gray-700">
+                {catogory_amt[expense_ind.catogory].name}
+              </span>
               <span className="font-semibold text-gray-800">
                 ₹{expense_ind.amt}
               </span>
