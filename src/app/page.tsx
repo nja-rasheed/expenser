@@ -1,141 +1,126 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { createExpense, getExpenses, deleteExpense, clearAll } from "./actions/action";
+import CategoryItems from "./components/Category";
 
 type Expense = {
-  id: number;
+  id: string;
   amt: number;
-  catogory: number;
+  category: number;
   dsc: string;
+  date: string;
 };
 
-type Catogory = {
-  name: string;
-  amt: number;
-};
+const category_list = ["Food", "Transportation", "Education", "Leisure", "Personal care", "Work", "Utilities"];
 
-const catogory: Catogory[] = [
-  { name: "Food", amt: 0 },
-  { name: "Transportation", amt: 0 },
-  { name: "Education", amt: 0 },
-  { name: "Leisure", amt: 0 },
-  { name: "Personal care", amt: 0 },
-  { name: "Work", amt: 0 },
-  { name: "Utilities", amt: 0 },
-];
 export default function Home() {
   const [amount, setAmount] = useState(0);
+  const [expDate, setExpDate] = useState("");
   const [cIndex, setCIndex] = useState(0);
   const [description, setDescription] = useState("");
   const [totalexpense, setExpense] = useState(0);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [catogory_amt, setCatogoryAmt] = useState<Catogory[]>(catogory);
-
-  useEffect(() => {
-    const stored_expenses = localStorage.getItem("expenses");
-    const stored_catogory_amt = localStorage.getItem("catogory_amt");
-    if (stored_expenses) {
-      const parsed = JSON.parse(stored_expenses);
-      setExpenses(parsed);
-      calculateTotal(parsed);
-    }
-    if (stored_catogory_amt) {
-      const parsed = JSON.parse(stored_catogory_amt);
-      setCatogoryAmt(parsed);
-    }
-  }, []);
+  const [category_refresh, setCategoryRefresh] = useState(0);
 
   function calculateTotal(updatedExpenses: Expense[]) {
     const total = updatedExpenses.reduce((sum, exp) => sum + exp.amt, 0);
     setExpense(total);
   }
 
-  function addExpense(e: React.FormEvent<HTMLFormElement>) {
+  function triggerCategoryRefresh() {
+    setCategoryRefresh(prev => prev + 1);
+  }
+
+  async function handleSetExpenses() {
+    const rawexps = await getExpenses();
+    console.log(rawexps)
+    const exps: Expense[] = rawexps.map((item) => ({
+      id: item._id.toString(),
+      amt: item.amount,
+      category: item.category,
+      dsc: item.name,
+      date: item.date
+    }))
+    setExpenses(exps)
+    calculateTotal(exps)
+  }
+
+  useEffect(() => {
+    handleSetExpenses();
+  }, []);
+
+  async function handleSubmitForm(e: React.FormEvent) {
     e.preventDefault();
-    const newExpense: Expense = {
-      id: Date.now(),
-      amt: amount,
-      catogory: cIndex,
-      dsc: description,
-    };
-    const updatedCats = catogory_amt.map((c, i) =>
-      i === cIndex ? { ...c, amt: c.amt + amount } : c
-    );
-    setCatogoryAmt(updatedCats);
-    localStorage.setItem("catogory_amt", JSON.stringify(updatedCats));
-    const updated = [...expenses, newExpense];
-    setExpenses(updated);
-    calculateTotal(updated);
-    localStorage.setItem("expenses", JSON.stringify(updated));
-    setAmount(0);
-    setDescription("");
-  }
-
-  function deleteExpense(del_id: number) {
-    const updated = expenses.filter((exp) => exp.id !== del_id);
-    const target = expenses.find((exp) => exp.id === del_id)!;
-    const updatedCats = catogory_amt.map((c, i) =>
-      i === target.catogory ? { ...c, amt: c.amt - target.amt } : c
-    );
-    setCatogoryAmt(updatedCats);
-    localStorage.setItem("catogory_amt", JSON.stringify(updatedCats));
-    setExpenses(updated);
-    calculateTotal(updated);
-    localStorage.setItem("expenses", JSON.stringify(updated));
-  }
-
-  function clearAll() {
-    if (expenses.length === 0) {
-      console.log("No expenses found");
-      return;
+    const result = await createExpense(amount, description, expDate, cIndex);
+    if (result.success) {
+      console.log("Expense Added Successfully!");
+      handleSetExpenses();
+      triggerCategoryRefresh();
+      setAmount(0);
+      setDescription("");
+      setCIndex(0);
+      setExpDate("");
+    } else {
+      console.log("Failed to add Expense!");
     }
-    localStorage.setItem("expenses", JSON.stringify([]));
-    localStorage.setItem("catogory_amt", JSON.stringify(catogory));
-    setExpenses([]);
-    setCatogoryAmt(catogory);
-    setExpense(0);
   }
 
-  function resetCatogortValues(index: number) {
-    const updatedCats = catogory_amt.map((c, i) =>
-      i === index ? { ...c, amt: 0 } : c
-    );
-    setCatogoryAmt(updatedCats);
-    localStorage.setItem("catogory_amt", JSON.stringify(updatedCats));
-    const updated = expenses.filter((exp) => exp.catogory !== index);
-    calculateTotal(updated);
-    setExpenses(updated);
-    localStorage.setItem("expenses", JSON.stringify(updated));
+  async function handleDelete(del_id: string) {
+    const result = await deleteExpense(del_id);
+    if (result.success) {
+      console.log("Expense Deleted Successfully!");
+      handleSetExpenses();
+      triggerCategoryRefresh();
+    } else {
+      console.log("Failed to delete expense!")
+    }
+  }
+
+  async function handleClearAll() {
+    const result = await clearAll();
+    if (result.success) {
+      console.log("Cleared every expenses!")
+      handleSetExpenses();
+      triggerCategoryRefresh();
+      calculateTotal(expenses)
+    }
   }
 
   return (
-    <div className=" bg-gray-100 min-h-screen flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
+    // CHANGED: added py-10
+    <div className="bg-gray-100 min-h-screen flex items-center justify-center py-10">
+      {/* CHANGED: max-w-md → max-w-lg */}
+      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-lg">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">
           Expense Tracker
         </h1>
-        <form onSubmit={addExpense} className="flex flex-col gap-3 mb-6">
-          <label className="text-black">Enter the Amount: </label>
+
+        <form onSubmit={handleSubmitForm} className="flex flex-col gap-3 mb-6">
+          {/* CHANGED: label style unified */}
+          <label className="text-sm font-medium text-gray-600">Enter the Amount</label>
           <input
             type="number"
-            placeholder="enter the amount..."
+            placeholder="Enter the amount..."
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
             className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-black"
             required
           />
-          <label className="text-black">Select a Catogory</label>
+
+          {/* CHANGED: label style unified */}
+          <label className="text-sm font-medium text-gray-600">Select a Category</label>
+          {/* CHANGED: replaced bg-amber-200 with proper input styling */}
           <select
             name="category"
             id="category"
-            className="text-black bg-amber-200 rounded-lg"
+            className="border border-gray-300 rounded-lg px-4 py-2 bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
             onChange={(e) => setCIndex(Number(e.target.value))}
           >
-            {catogory_amt.map((c, index) => (
-              <option value={index} key={index}>
-                {c.name}
-              </option>
+            {category_list.map((c, index) => (
+              <option value={index} key={index}>{c}</option>
             ))}
           </select>
+
           <input
             type="text"
             placeholder="Enter description..."
@@ -144,6 +129,16 @@ export default function Home() {
             className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-black"
             required
           />
+
+          {/* CHANGED: date input was completely unstyled, now matches other inputs */}
+          <input
+            type="date"
+            value={expDate}
+            onChange={(e) => setExpDate(e.target.value)}
+            className="border border-gray-300 rounded-lg px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
+            required
+          />
+
           <button
             type="submit"
             className="bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg px-4 py-2 transition-colors"
@@ -157,36 +152,21 @@ export default function Home() {
           <p className="text-3xl font-bold text-blue-600">₹{totalexpense}</p>
         </div>
 
-        <h3 className="text-sm font-semibold text-gray-400 uppercase mb-2">
-          Categories
-        </h3>
-        <ul className="flex flex-col gap-2 mb-6">
-          {catogory_amt.map((c, index) => (
-            <li
-              key={index}
-              className="flex justify-between items-center bg-gray-50 rounded-lg px-4 py-3"
-            >
-              <span className="text-gray-700">{c.name}</span>
-              <span className="font-semibold text-gray-800">₹{c.amt}</span>
-              <button
-                onClick={() => resetCatogortValues(index)}
-                className="text-black rounded-lg px-2 py-1 bg-gray-400 hover:bg-gray-600 transition-colors"
-              >
-                Reset
-              </button>
-            </li>
-          ))}
-        </ul>
+        <CategoryItems refresh={category_refresh} />
 
-        <h3 className="text-sm font-semibold text-gray-400 uppercase mb-2">
+        {/* CHANGED: added tracking-wider */}
+        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">
           Expenses
         </h3>
+
+        {/* CHANGED: gray → red to signal destructive action */}
         <button
-          className="text-black rounded-lg px-2 py-1 bg-gray-400 hover:bg-gray-600 transition-colors"
-          onClick={() => clearAll()}
+          className="text-red-600 rounded-lg px-3 py-1 bg-red-100 hover:bg-red-200 transition-colors text-sm font-medium mb-3"
+          onClick={() => handleClearAll()}
         >
           Clear All
         </button>
+
         {expenses.length === 0 && (
           <p className="text-gray-400 text-sm text-center mt-4">
             No expenses yet.
@@ -195,22 +175,24 @@ export default function Home() {
 
         <ul className="flex flex-col gap-2">
           {expenses.map((expense_ind, index) => (
+            // CHANGED: added flex-wrap gap-y-1
             <li
               key={index}
-              className="flex justify-between items-center bg-gray-50 rounded-lg px-4 py-3"
+              className="flex flex-wrap justify-between items-center gap-y-1 bg-gray-50 rounded-lg px-4 py-3"
             >
               <span className="text-gray-700">{expense_ind.dsc}</span>
-              <span className="text-gray-700">
-                {catogory_amt[expense_ind.catogory].name}
+              <span className="text-gray-500 text-sm">{expense_ind.date}</span>
+              {/* CHANGED: plain text → badge */}
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                {category_list[expense_ind.category]}
               </span>
-              <span className="font-semibold text-gray-800">
-                ₹{expense_ind.amt}
-              </span>
+              <span className="font-semibold text-gray-800">₹{expense_ind.amt}</span>
+              {/* CHANGED: gray → red to match Clear All */}
               <button
-                onClick={() => deleteExpense(expense_ind.id)}
-                className="text-black rounded-lg px-2 py-1 bg-gray-400 hover:bg-gray-600 transition-colors"
+                onClick={() => handleDelete(expense_ind.id)}
+                className="text-red-600 rounded-lg px-3 py-1 bg-red-100 hover:bg-red-200 transition-colors text-sm"
               >
-                Delete Expense
+                Delete
               </button>
             </li>
           ))}

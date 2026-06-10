@@ -1,0 +1,1 @@
+mongodb+srv://rasheedstudies21_db_user:<db_password>@cluster0.qd5liat.mongodb.net/?appName=Cluster0
